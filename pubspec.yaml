@@ -48,6 +48,9 @@ dependencies:
   uuid: ^3.0.6
   flutter_emoji: ^2.4.0
   messaging_service: ^1.0.2
+  url_launcher: ^6.1.4
+  
+  
   
   
 
