@@ -1,4 +1,4 @@
-// ignore_for_file: must_be_immutable, use_key_in_widget_constructors, no_leading_underscores_for_local_identifiers, prefer_const_constructors, avoid_print, prefer_typing_uninitialized_variables, no_logic_in_create_state
+// ignore_for_file: must_be_immutable, use_key_in_widget_constructors, no_leading_underscores_for_local_identifiers, prefer_const_constructors, avoid_print, prefer_typing_uninitialized_variables, no_logic_in_create_state, sized_box_for_whitespace
 //@dart=2.9
 import 'dart:io';
 
@@ -21,6 +21,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   var userInfo;
+  int DOC = 0;
   String chatRoomId;
   _ChatScreenState(this.chatRoomId, this.userInfo);
   final TextEditingController _message = TextEditingController();
@@ -29,59 +30,59 @@ class _ChatScreenState extends State<ChatScreen> {
   File imageFile;
   var moreItems = ["DeleteAll"];
 
-  Future<void> getImage() async {
-    ImagePicker _picker = ImagePicker();
+  // Future<void> getImage() async {
+  //   ImagePicker _picker = ImagePicker();
 
-    await _picker.pickImage(source: ImageSource.gallery).then((xFile) {
-      if (xFile != null) {
-        imageFile = File(xFile.path);
-        uploadImage();
-      }
-    });
-  }
+  //   await _picker.pickImage(source: ImageSource.gallery).then((xFile) {
+  //     if (xFile != null) {
+  //       imageFile = File(xFile.path);
+  //       uploadImage();
+  //     }
+  //   });
+  // }
 
-  Future<void> uploadImage() async {
-    String fileName = Uuid().v1();
-    int status = 1;
+  // Future<void> uploadImage() async {
+  //   String fileName = Uuid().v1();
+  //   int status = 1;
 
-    await firebase
-        .collection('chatroom')
-        .doc(widget.chatRoomId)
-        .collection('chats')
-        .doc(fileName)
-        .set({
-      "sendby": auth.currentUser.displayName,
-      "message": "",
-      "type": "img",
-      "time": FieldValue.serverTimestamp(),
-    });
+  //   await firebase
+  //       .collection('chatroom')
+  //       .doc(widget.chatRoomId)
+  //       .collection('chats')
+  //       .doc(fileName)
+  //       .set({
+  //     "sendby": auth.currentUser.displayName,
+  //     "message": "",
+  //     "type": "img",
+  //     "time": FieldValue.serverTimestamp(),
+  //   });
 
-    var ref =
-        FirebaseStorage.instance.ref().child('images').child("$fileName.jpg");
+  //   var ref =
+  //       FirebaseStorage.instance.ref().child('images').child("$fileName.jpg");
 
-    var uploadTask = await ref.putFile(imageFile).catchError((error) async {
-      await firebase
-          .collection('chatroom')
-          .doc(widget.chatRoomId)
-          .collection('chats')
-          .doc(fileName)
-          .delete();
-      status = 0;
-    });
+  //   var uploadTask = await ref.putFile(imageFile).catchError((error) async {
+  //     await firebase
+  //         .collection('chatroom')
+  //         .doc(widget.chatRoomId)
+  //         .collection('chats')
+  //         .doc(fileName)
+  //         .delete();
+  //     status = 0;
+  //   });
 
-    if (status == 1) {
-      String imageUrl = await uploadTask.ref.getDownloadURL();
+  //   if (status == 1) {
+  //     String imageUrl = await uploadTask.ref.getDownloadURL();
 
-      await firebase
-          .collection('chatroom')
-          .doc(widget.chatRoomId)
-          .collection('chats')
-          .doc(fileName)
-          .update({"message": imageUrl});
+  //     await firebase
+  //         .collection('chatroom')
+  //         .doc(widget.chatRoomId)
+  //         .collection('chats')
+  //         .doc(fileName)
+  //         .update({"message": imageUrl});
 
-      print(imageUrl);
-    }
-  }
+  //     print(imageUrl);
+  //   }
+  // }
 
   void onSendMessage() async {
     if (_message.text.isNotEmpty) {
@@ -90,6 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
         "message": _message.text,
         "type": "text",
         "time": FieldValue.serverTimestamp(),
+        "uid": "doc$DOC"
       };
 
       _message.clear();
@@ -97,7 +99,11 @@ class _ChatScreenState extends State<ChatScreen> {
           .collection('chatroom')
           .doc(widget.chatRoomId)
           .collection('chats')
-          .add(messages);
+          .doc("doc$DOC")
+          .set(messages);
+      setState(() {
+        DOC++;
+      });
     } else {
       print("Enter Some Text");
     }
@@ -161,7 +167,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      SizedBox(
+                      Container(
                         height: size.height / 1.25,
                         width: size.width,
                         child: StreamBuilder<QuerySnapshot>(
@@ -194,11 +200,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            IconButton(
-                                onPressed: () {
-                                  getImage();
-                                },
-                                icon: Icon(Icons.photo)),
+                            // IconButton(
+                            //     onPressed: () {
+                            //       getImage();
+                            //     },
+                            //     icon: Icon(Icons.photo)),
                             Container(
                               height: size.height / 17,
                               width: size.width / 1.5,
@@ -239,58 +245,81 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget messages(Size size, Map<String, dynamic> map, BuildContext context) {
-    return map['type'] == "text"
-        ? Container(
-            width: size.width,
-            alignment: map['sendby'] == auth.currentUser.displayName
-                ? Alignment.centerRight
-                : Alignment.centerLeft,
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-              margin: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                color: Colors.blue,
-              ),
-              child: Text(
-                map['message'],
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          )
-        : Container(
-            height: size.height / 2.5,
-            width: size.width,
-            padding: EdgeInsets.symmetric(vertical: 5, horizontal: 5),
-            alignment: map['sendby'] == auth.currentUser.displayName
-                ? Alignment.centerRight
-                : Alignment.centerLeft,
-            child: InkWell(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ShowImage(
-                    imageUrl: map['message'],
+    return /*map['type'] == "text"
+        ?*/
+        ((map['time'] as Timestamp) != null)
+            ? Container(
+                width: size.width,
+                alignment: map['sendby'] == auth.currentUser.displayName
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: InkWell(
+                  onLongPress: () {
+                    deleteChat(map);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                    margin: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      color: Colors.blue,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          map['message'],
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(
+                          width: size.width / 6,
+                          height: 3,
+                        ),
+                        Text(
+                          "${(map['time'] as Timestamp).toDate().hour}:${(map['time'] as Timestamp).toDate().minute}",
+                          style: TextStyle(fontSize: 7),
+                        )
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              child: Container(
-                height: size.height / 2.5,
-                width: size.width / 2,
-                decoration: BoxDecoration(border: Border.all()),
-                alignment: map['message'] != "" ? null : Alignment.center,
-                child: map['message'] != ""
-                    ? Image.network(
-                        map['message'],
-                        fit: BoxFit.cover,
-                      )
-                    : CircularProgressIndicator(),
-              ),
-            ),
-          );
+              )
+            : Center(
+                child: CircularProgressIndicator(),
+              );
+    // : Container(
+    //     height: size.height / 2.5,
+    //     width: size.width,
+    //     padding: EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+    //     alignment: map['sendby'] == auth.currentUser.displayName
+    //         ? Alignment.centerRight
+    //         : Alignment.centerLeft,
+    //     child: InkWell(
+    //       onTap: () => Navigator.of(context).push(
+    //         MaterialPageRoute(
+    //           builder: (_) => ShowImage(
+    //             imageUrl: map['message'],
+    //           ),
+    //         ),
+    //       ),
+    //       child: Container(
+    //         height: size.height / 2.5,
+    //         width: size.width / 2,
+    //         decoration: BoxDecoration(border: Border.all()),
+    //         alignment: map['message'] != "" ? null : Alignment.center,
+    //         child: map['message'] != ""
+    //             ? Image.network(
+    //                 map['message'],
+    //                 fit: BoxFit.cover,
+    //               )
+    //             : CircularProgressIndicator(),
+    //       ),
+    //     ),
+    //   );
   }
 
   void deleteAllChats() async {
@@ -305,24 +334,33 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     await batch.commit();
   }
-}
 
-class ShowImage extends StatelessWidget {
-  final String imageUrl;
-
-  const ShowImage({this.imageUrl, Key key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final Size size = MediaQuery.of(context).size;
-
-    return Scaffold(
-      body: Container(
-        height: size.height,
-        width: size.width,
-        color: Colors.black,
-        child: Image.network(imageUrl),
-      ),
-    );
+  void deleteChat(map) async {
+    await firebase
+        .collection("chatroom")
+        .doc(widget.chatRoomId)
+        .collection("chats")
+        .doc(map['uid'])
+        .delete();
   }
 }
+
+// class ShowImage extends StatelessWidget {
+//   final String imageUrl;
+
+//   const ShowImage({this.imageUrl, Key key}) : super(key: key);
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final Size size = MediaQuery.of(context).size;
+
+//     return Scaffold(
+//       body: Container(
+//         height: size.height,
+//         width: size.width,
+//         color: Colors.black,
+//         child: Image.network(imageUrl),
+//       ),
+//     );
+//   }
+// }

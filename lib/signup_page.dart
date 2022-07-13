@@ -1,6 +1,5 @@
 // ignore_for_file: prefer_const_constructors, prefer_typing_uninitialized_variables, non_constant_identifier_names, use_build_context_synchronously, avoid_print, unnecessary_new
 //@dart=2.9
-import 'package:chat_application/homescreen.dart';
 import 'package:chat_application/login_page.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';

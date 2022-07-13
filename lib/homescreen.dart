@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:chat_application/chatting_page.dart';
+import 'package:chat_application/search_users.dart';
 import 'package:chat_application/signup_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -26,10 +27,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final storage = new FlutterSecureStorage();
   Map<String, dynamic> userInfo;
   String roomId;
+  List usersList = [];
 
   @override
   void initState() {
     getUserData();
+    getUsersData();
     setStatus("Online");
     super.initState();
   }
@@ -75,96 +78,106 @@ class _HomeScreenState extends State<HomeScreen> {
         exit(0);
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            "Vivid Hive",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          centerTitle: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-                bottomRight: Radius.circular(25),
-                bottomLeft: Radius.circular(25)),
-          ),
-          backgroundColor: Color.fromARGB(255, 52, 11, 0),
-        ),
-        drawer: Drawer(
-          child: ListView(
-            children: [
-              Container(
-                color: Color.fromARGB(255, 52, 11, 0),
-                padding: EdgeInsets.fromLTRB(5, 10, 5, 10),
-                margin: EdgeInsets.all(10),
-                // ignore: prefer_const_literals_to_create_immutables
-                child: Column(children: [
-                  Text(
-                    userInfo['Name'],
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  Text(userInfo['Phone'],
-                      style: TextStyle(color: Colors.white)),
-                  Text(userInfo['Email'], style: TextStyle(color: Colors.white))
-                ]),
-              ),
-              ListTile(
-                leading: Icon(Icons.home),
-                title: Text("Home"),
-                trailing: Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.logout_outlined),
-                title: Text("Log out"),
-                trailing: Icon(Icons.arrow_forward_ios),
-                onTap: () async {
-                  try {
-                    setStatus(" ");
-                    await auth.signOut();
-                    await storage.delete(key: "uid");
-                    showSnackBar(context, "Logout successfully");
-                    // ignore: use_build_context_synchronously
-                    Navigator.pushAndRemoveUntil(
+          appBar: AppBar(
+            title: Text(
+              "Vivid Hive",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            centerTitle: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                  bottomRight: Radius.circular(25),
+                  bottomLeft: Radius.circular(25)),
+            ),
+            backgroundColor: Color.fromARGB(255, 52, 11, 0),
+            actions: [
+              IconButton(
+                  onPressed: () {
+                    Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => LoginPage(),
-                        ),
-                        (route) => false);
-                  } catch (e) {
-                    print("singout failed due to ${e.toString()}");
-                    showSnackBar(
-                        context, "singout failed due to ${e.toString()}");
-                  }
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.delete,
-                  color: Colors.red,
-                ),
-                title: Text(
-                  "Delete Account",
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  showDialogScreen(context);
-                },
-              ),
+                            builder: (context) => SearchUsers(
+                                usersList: usersList, roomId: roomId)));
+                  },
+                  icon: Icon(
+                    Icons.search,
+                    color: Colors.white,
+                  ))
             ],
           ),
-        ),
-        body: StreamBuilder<QuerySnapshot>(
-          stream: firebase.collection("users").snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return ListView.builder(
-                  itemCount: snapshot.data.docs.length,
+          drawer: Drawer(
+            child: ListView(
+              children: [
+                Container(
+                  color: Color.fromARGB(255, 52, 11, 0),
+                  padding: EdgeInsets.fromLTRB(5, 10, 5, 10),
+                  margin: EdgeInsets.all(10),
+                  // ignore: prefer_const_literals_to_create_immutables
+                  child: Column(children: [
+                    Text(
+                      userInfo['Name'],
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    Text(userInfo['Phone'],
+                        style: TextStyle(color: Colors.white)),
+                    Text(userInfo['Email'],
+                        style: TextStyle(color: Colors.white))
+                  ]),
+                ),
+                ListTile(
+                  leading: Icon(Icons.home),
+                  title: Text("Home"),
+                  trailing: Icon(Icons.arrow_forward_ios),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.logout_outlined),
+                  title: Text("Log out"),
+                  trailing: Icon(Icons.arrow_forward_ios),
+                  onTap: () async {
+                    try {
+                      setStatus(" ");
+                      await auth.signOut();
+                      await storage.delete(key: "uid");
+                      showSnackBar(context, "Logout successfully");
+                      // ignore: use_build_context_synchronously
+                      Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LoginPage(),
+                          ),
+                          (route) => false);
+                    } catch (e) {
+                      print("singout failed due to ${e.toString()}");
+                      showSnackBar(
+                          context, "singout failed due to ${e.toString()}");
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete,
+                    color: Colors.red,
+                  ),
+                  title: Text(
+                    "Delete Account",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    showDialogScreen(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+          body: (usersList != null)
+              ? ListView.builder(
+                  itemCount: usersList.length,
                   // ignore: missing_return
                   itemBuilder: (context, i) {
-                    QueryDocumentSnapshot x = snapshot.data.docs[i];
-
                     return ListTile(
                       leading: CircleAvatar(
                         // ignore: sort_child_properties_last
@@ -175,29 +188,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         backgroundColor: Color.fromARGB(255, 52, 11, 0),
                       ),
                       title: Text(
-                        x['Name'],
+                        usersList[i]['Name'],
                         style: TextStyle(color: Colors.black),
                       ),
                       onTap: () {
                         setState(() {
-                          roomId = chatRoomId(userInfo['uid'], x['uid']);
+                          roomId =
+                              chatRoomId(userInfo['uid'], usersList[i]['uid']);
                         });
                         Navigator.push(context,
                             MaterialPageRoute(builder: (context) {
                           return ChatScreen(
                             chatRoomId: roomId,
-                            userInfo: x,
+                            userInfo: usersList[i],
                           );
                         }));
                       },
                     );
-                  });
-            } else {
-              return Center(child: CircularProgressIndicator());
-            }
-          },
-        ),
-      ),
+                  })
+              : Center(child: CircularProgressIndicator())),
     );
   }
 
@@ -243,6 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await firebase.collection("chatroom").doc(roomId).delete();
       await firebase.collection("users").doc(userInfo['uid']).delete();
       storage.delete(key: "uid");
+      getUsersData();
       auth.currentUser.delete();
       await auth.signOut();
       showSnackBar(context, "Account deleted");
@@ -254,6 +264,25 @@ class _HomeScreenState extends State<HomeScreen> {
           (route) => false);
     } catch (e) {
       print(e.toString());
+    }
+  }
+
+  Future<void> getUsersData() async {
+    try {
+      final CollectionReference profileList = firebase.collection("users");
+      await profileList.get().then((snapshots) {
+        for (var element in snapshots.docs) {
+          usersList.add(element.data());
+        }
+      });
+      for (var i = 0; i < usersList.length; i++) {
+        if (usersList[i]['uid'] == auth.currentUser.uid) {
+          usersList.removeAt(i);
+          break;
+        }
+      }
+    } catch (e) {
+      print(e);
     }
   }
 }
