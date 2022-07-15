@@ -1,4 +1,4 @@
-// ignore_for_file: must_be_immutable, use_key_in_widget_constructors, no_leading_underscores_for_local_identifiers, prefer_const_constructors, avoid_print, prefer_typing_uninitialized_variables, no_logic_in_create_state, sized_box_for_whitespace
+// ignore_for_file: must_be_immutable, use_key_in_widget_constructors, no_leading_underscores_for_local_identifiers, prefer_const_constructors, avoid_print, prefer_typing_uninitialized_variables, no_logic_in_create_state, sized_box_for_whitespace, unnecessary_new, non_constant_identifier_names
 //@dart=2.9
 import 'dart:io';
 
@@ -6,8 +6,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:uuid/uuid.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+// import 'package:image_picker/image_picker.dart';
+// import 'package:uuid/uuid.dart';
 
 class ChatScreen extends StatefulWidget {
   var userInfo;
@@ -21,14 +22,25 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   var userInfo;
-  int DOC = 0;
+  int DOC;
   String chatRoomId;
   _ChatScreenState(this.chatRoomId, this.userInfo);
   final TextEditingController _message = TextEditingController();
+  final storage = new FlutterSecureStorage();
   final firebase = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
   File imageFile;
   var moreItems = ["DeleteAll"];
+
+  @override
+  void initState() {
+    super.initState();
+    storage.read(key: "DOC").then((value) {
+      setState(() {
+        DOC = int.tryParse(value);
+      });
+    });
+  }
 
   // Future<void> getImage() async {
   //   ImagePicker _picker = ImagePicker();
@@ -112,136 +124,145 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    if (userInfo == null) {
+    if (userInfo == null || DOC == null) {
       return Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
         ),
       );
     }
-    return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Color.fromARGB(255, 52, 11, 0),
-          title: ListTile(
-            title: Text(
-              userInfo['Name'],
-              style: TextStyle(color: Colors.white, fontSize: 18),
+    // ignore: missing_return
+    return WillPopScope(
+      // ignore: missing_return
+      onWillPop: () async {
+        await storage.write(key: "DOC", value: DOC.toString());
+        return true;
+      },
+      child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: Color.fromARGB(255, 52, 11, 0),
+            title: ListTile(
+              title: Text(
+                userInfo['Name'],
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+              subtitle: Text(
+                userInfo['status'],
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
             ),
-            subtitle: Text(
-              userInfo['status'],
-              style: TextStyle(color: Colors.white70, fontSize: 12),
-            ),
+            actions: [
+              PopupMenuButton(
+                  icon: Icon(
+                    Icons.more_vert_sharp,
+                    color: Colors.white,
+                  ),
+                  onSelected: (value) {
+                    setState(() {
+                      if (value == "DeleteAll") {
+                        deleteAllChats();
+                      }
+                    });
+                  },
+                  itemBuilder: (BuildContext context) {
+                    return moreItems.map((String selecteditem) {
+                      return PopupMenuItem(
+                        value: selecteditem,
+                        child: Text(selecteditem),
+                      );
+                    }).toList();
+                  }),
+            ],
           ),
-          actions: [
-            PopupMenuButton(
-                icon: Icon(
-                  Icons.more_vert_sharp,
-                  color: Colors.white,
-                ),
-                onSelected: (value) {
-                  setState(() {
-                    if (value == "DeleteAll") {
-                      deleteAllChats();
-                    }
-                  });
-                },
-                itemBuilder: (BuildContext context) {
-                  return moreItems.map((String selecteditem) {
-                    return PopupMenuItem(
-                      value: selecteditem,
-                      child: Text(selecteditem),
-                    );
-                  }).toList();
-                }),
-          ],
-        ),
-        body: Stack(
-          children: [
-            Positioned.fill(
-                child: Image(
-              image: AssetImage("lib/images/vivid_hive.jpeg"),
-            )),
-            Positioned(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 5, right: 5, top: 10),
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Container(
-                        height: size.height / 1.25,
-                        width: size.width,
-                        child: StreamBuilder<QuerySnapshot>(
-                          stream: firebase
-                              .collection('chatroom')
-                              .doc(widget.chatRoomId)
-                              .collection('chats')
-                              .orderBy("time", descending: false)
-                              .snapshots(),
-                          builder: (BuildContext context,
-                              AsyncSnapshot<QuerySnapshot> snapshot) {
-                            if (snapshot.data != null) {
-                              return ListView.builder(
-                                itemCount: snapshot.data.docs.length,
-                                itemBuilder: (context, index) {
-                                  Map<String, dynamic> map =
-                                      snapshot.data.docs[index].data()
-                                          as Map<String, dynamic>;
-                                  return messages(size, map, context);
-                                },
-                              );
-                            } else {
-                              return Container();
-                            }
-                          },
+          body: Stack(
+            children: [
+              Positioned.fill(
+                  child: Image(
+                image: AssetImage("lib/images/vivid_hive.jpeg"),
+              )),
+              Positioned(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 5, right: 5, top: 10),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        Container(
+                          height: size.height / 1.25,
+                          width: size.width,
+                          child: StreamBuilder<QuerySnapshot>(
+                            stream: firebase
+                                .collection('chatroom')
+                                .doc(widget.chatRoomId)
+                                .collection('chats')
+                                .orderBy("time", descending: false)
+                                .snapshots(),
+                            builder: (BuildContext context,
+                                AsyncSnapshot<QuerySnapshot> snapshot) {
+                              if (snapshot.data != null) {
+                                return ListView.builder(
+                                  itemCount: snapshot.data.docs.length,
+                                  itemBuilder: (context, index) {
+                                    Map<String, dynamic> map =
+                                        snapshot.data.docs[index].data()
+                                            as Map<String, dynamic>;
+                                    return messages(size, map, context);
+                                  },
+                                );
+                              } else {
+                                return Container();
+                              }
+                            },
+                          ),
                         ),
-                      ),
-                      Container(
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // IconButton(
-                            //     onPressed: () {
-                            //       getImage();
-                            //     },
-                            //     icon: Icon(Icons.photo)),
-                            Container(
-                              height: size.height / 17,
-                              width: size.width / 1.5,
-                              decoration: BoxDecoration(
-                                  color: Colors.black12,
-                                  border: Border.all(
-                                      color: Color.fromARGB(255, 52, 11, 0),
-                                      width: 2),
-                                  borderRadius: BorderRadius.circular(20)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(7.0),
-                                child: IntrinsicHeight(
-                                  child: TextField(
-                                    maxLines: 2,
-                                    cursorColor: Color.fromARGB(255, 52, 11, 0),
-                                    cursorHeight: 22,
-                                    controller: _message,
-                                    decoration: InputDecoration.collapsed(
-                                        hintText: "Send Message",
-                                        border: InputBorder.none),
+                        Container(
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // IconButton(
+                              //     onPressed: () {
+                              //       getImage();
+                              //     },
+                              //     icon: Icon(Icons.photo)),
+                              Container(
+                                height: size.height / 17,
+                                width: size.width / 1.5,
+                                decoration: BoxDecoration(
+                                    color: Colors.black12,
+                                    border: Border.all(
+                                        color: Color.fromARGB(255, 52, 11, 0),
+                                        width: 2),
+                                    borderRadius: BorderRadius.circular(20)),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(7.0),
+                                  child: IntrinsicHeight(
+                                    child: TextField(
+                                      maxLines: 2,
+                                      cursorColor:
+                                          Color.fromARGB(255, 52, 11, 0),
+                                      cursorHeight: 22,
+                                      controller: _message,
+                                      decoration: InputDecoration.collapsed(
+                                          hintText: "Send Message",
+                                          border: InputBorder.none),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            IconButton(
-                                icon: Icon(Icons.send),
-                                onPressed: onSendMessage),
-                          ],
+                              IconButton(
+                                  icon: Icon(Icons.send),
+                                  onPressed: onSendMessage),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            )
-          ],
-        ));
+              )
+            ],
+          )),
+    );
   }
 
   Widget messages(Size size, Map<String, dynamic> map, BuildContext context) {
