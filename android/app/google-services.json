@@ -1,40 +1,47 @@
 {
-    "project_info": {
-        "project_number": "590516736133",
-        "project_id": "vivid-hive",
-        "storage_bucket": "vivid-hive.appspot.com"
-    },
-    "client": [{
-        "client_info": {
-            "mobilesdk_app_id": "1:590516736133:android:8c9feb1310bc19440c99ec",
-            "android_client_info": {
-                "package_name": "com.example.chat_application"
-            }
-        },
-        "oauth_client": [{
-                "client_id": "590516736133-i9041huhfquoqi1qlv0osds8pnqu6fhl.apps.googleusercontent.com",
-                "client_type": 1,
-                "android_info": {
-                    "package_name": "com.example.chat_application",
-                    "certificate_hash": "b02ab957232b6839a036c413953bdfe9a71ee9c1"
-                }
-            },
-            {
-                "client_id": "590516736133-qmvka8hjvg921bslvgmktggg2ujuks9c.apps.googleusercontent.com",
-                "client_type": 3
-            }
-        ],
-        "api_key": [{
-            "current_key": "AIzaSyAdJlCs4ZU3d2-5QqEBPyevZWjpyH-G12U"
-        }],
-        "services": {
-            "appinvite_service": {
-                "other_platform_oauth_client": [{
-                    "client_id": "590516736133-qmvka8hjvg921bslvgmktggg2ujuks9c.apps.googleusercontent.com",
-                    "client_type": 3
-                }]
-            }
+  "project_info": {
+    "project_number": "590516736133",
+    "project_id": "vivid-hive",
+    "storage_bucket": "vivid-hive.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:590516736133:android:8c9feb1310bc19440c99ec",
+        "android_client_info": {
+          "package_name": "com.example.chat_application"
         }
-    }],
-    "configuration_version": "1"
+      },
+      "oauth_client": [
+        {
+          "client_id": "590516736133-0omb81je23f6ccscpkopalo8g9g8cvkm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.chat_application",
+            "certificate_hash": "b02ab957232b6839a036c413953bdfe9a71ee9c1"
+          }
+        },
+        {
+          "client_id": "590516736133-qmvka8hjvg921bslvgmktggg2ujuks9c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdJlCs4ZU3d2-5QqEBPyevZWjpyH-G12U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "590516736133-qmvka8hjvg921bslvgmktggg2ujuks9c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
 }

@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 // import 'package:image_picker/image_picker.dart';
@@ -22,7 +21,6 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   var userInfo;
-  int DOC;
   String chatRoomId;
   _ChatScreenState(this.chatRoomId, this.userInfo);
   final TextEditingController _message = TextEditingController();
@@ -31,16 +29,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final auth = FirebaseAuth.instance;
   File imageFile;
   var moreItems = ["DeleteAll"];
-
-  @override
-  void initState() {
-    super.initState();
-    storage.read(key: "DOC").then((value) {
-      setState(() {
-        DOC = int.tryParse(value);
-      });
-    });
-  }
 
   // Future<void> getImage() async {
   //   ImagePicker _picker = ImagePicker();
@@ -103,7 +91,6 @@ class _ChatScreenState extends State<ChatScreen> {
         "message": _message.text,
         "type": "text",
         "time": FieldValue.serverTimestamp(),
-        "uid": "doc$DOC"
       };
 
       _message.clear();
@@ -111,11 +98,7 @@ class _ChatScreenState extends State<ChatScreen> {
           .collection('chatroom')
           .doc(widget.chatRoomId)
           .collection('chats')
-          .doc("doc$DOC")
-          .set(messages);
-      setState(() {
-        DOC++;
-      });
+          .add(messages);
     } else {
       print("Enter Some Text");
     }
@@ -124,7 +107,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    if (userInfo == null || DOC == null) {
+    if (userInfo == null) {
       return Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
@@ -132,137 +115,129 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
     // ignore: missing_return
-    return WillPopScope(
-      // ignore: missing_return
-      onWillPop: () async {
-        await storage.write(key: "DOC", value: DOC.toString());
-        return true;
-      },
-      child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Color.fromARGB(255, 52, 11, 0),
-            title: ListTile(
-              title: Text(
-                userInfo['Name'],
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
-              subtitle: Text(
-                userInfo['status'],
-                style: TextStyle(color: Colors.white70, fontSize: 12),
-              ),
+    return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Color.fromARGB(255, 52, 11, 0),
+          title: ListTile(
+            title: Text(
+              userInfo['Name'],
+              style: TextStyle(color: Colors.white, fontSize: 18),
             ),
-            actions: [
-              PopupMenuButton(
-                  icon: Icon(
-                    Icons.more_vert_sharp,
-                    color: Colors.white,
-                  ),
-                  onSelected: (value) {
-                    setState(() {
-                      if (value == "DeleteAll") {
-                        deleteAllChats();
-                      }
-                    });
-                  },
-                  itemBuilder: (BuildContext context) {
-                    return moreItems.map((String selecteditem) {
-                      return PopupMenuItem(
-                        value: selecteditem,
-                        child: Text(selecteditem),
-                      );
-                    }).toList();
-                  }),
-            ],
+            subtitle: Text(
+              userInfo['status'],
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
           ),
-          body: Stack(
-            children: [
-              Positioned.fill(
-                  child: Image(
-                image: AssetImage("lib/images/vivid_hive.jpeg"),
-              )),
-              Positioned(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 5, right: 5, top: 10),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        Container(
-                          height: size.height / 1.25,
-                          width: size.width,
-                          child: StreamBuilder<QuerySnapshot>(
-                            stream: firebase
-                                .collection('chatroom')
-                                .doc(widget.chatRoomId)
-                                .collection('chats')
-                                .orderBy("time", descending: false)
-                                .snapshots(),
-                            builder: (BuildContext context,
-                                AsyncSnapshot<QuerySnapshot> snapshot) {
-                              if (snapshot.data != null) {
-                                return ListView.builder(
-                                  itemCount: snapshot.data.docs.length,
-                                  itemBuilder: (context, index) {
-                                    Map<String, dynamic> map =
-                                        snapshot.data.docs[index].data()
-                                            as Map<String, dynamic>;
-                                    return messages(size, map, context);
-                                  },
-                                );
-                              } else {
-                                return Container();
-                              }
-                            },
-                          ),
+          actions: [
+            PopupMenuButton(
+                icon: Icon(
+                  Icons.more_vert_sharp,
+                  color: Colors.white,
+                ),
+                onSelected: (value) {
+                  setState(() {
+                    if (value == "DeleteAll") {
+                      deleteAllChats();
+                    }
+                  });
+                },
+                itemBuilder: (BuildContext context) {
+                  return moreItems.map((String selecteditem) {
+                    return PopupMenuItem(
+                      value: selecteditem,
+                      child: Text(selecteditem),
+                    );
+                  }).toList();
+                }),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+                child: Image(
+              image: AssetImage("lib/images/vivid_hive.jpeg"),
+            )),
+            Positioned(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 5, right: 5, top: 10),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Container(
+                        height: size.height / 1.25,
+                        width: size.width,
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: firebase
+                              .collection('chatroom')
+                              .doc(widget.chatRoomId)
+                              .collection('chats')
+                              .orderBy("time", descending: false)
+                              .snapshots(),
+                          builder: (BuildContext context,
+                              AsyncSnapshot<QuerySnapshot> snapshot) {
+                            if (snapshot.data != null) {
+                              return ListView.builder(
+                                itemCount: snapshot.data.docs.length,
+                                itemBuilder: (context, index) {
+                                  Map<String, dynamic> map =
+                                      snapshot.data.docs[index].data()
+                                          as Map<String, dynamic>;
+                                  return messages(size, map, context);
+                                },
+                              );
+                            } else {
+                              return Container();
+                            }
+                          },
                         ),
-                        Container(
-                          alignment: Alignment.center,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // IconButton(
-                              //     onPressed: () {
-                              //       getImage();
-                              //     },
-                              //     icon: Icon(Icons.photo)),
-                              Container(
-                                height: size.height / 17,
-                                width: size.width / 1.5,
-                                decoration: BoxDecoration(
-                                    color: Colors.black12,
-                                    border: Border.all(
-                                        color: Color.fromARGB(255, 52, 11, 0),
-                                        width: 2),
-                                    borderRadius: BorderRadius.circular(20)),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(7.0),
-                                  child: IntrinsicHeight(
-                                    child: TextField(
-                                      maxLines: 2,
-                                      cursorColor:
-                                          Color.fromARGB(255, 52, 11, 0),
-                                      cursorHeight: 22,
-                                      controller: _message,
-                                      decoration: InputDecoration.collapsed(
-                                          hintText: "Send Message",
-                                          border: InputBorder.none),
-                                    ),
+                      ),
+                      Container(
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // IconButton(
+                            //     onPressed: () {
+                            //       getImage();
+                            //     },
+                            //     icon: Icon(Icons.photo)),
+                            Container(
+                              height: size.height / 17,
+                              width: size.width / 1.5,
+                              decoration: BoxDecoration(
+                                  color: Colors.black12,
+                                  border: Border.all(
+                                      color: Color.fromARGB(255, 52, 11, 0),
+                                      width: 2),
+                                  borderRadius: BorderRadius.circular(20)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(7.0),
+                                child: IntrinsicHeight(
+                                  child: TextField(
+                                    maxLines: 2,
+                                    cursorColor: Color.fromARGB(255, 52, 11, 0),
+                                    cursorHeight: 22,
+                                    controller: _message,
+                                    decoration: InputDecoration.collapsed(
+                                        hintText: "Send Message",
+                                        border: InputBorder.none),
                                   ),
                                 ),
                               ),
-                              IconButton(
-                                  icon: Icon(Icons.send),
-                                  onPressed: onSendMessage),
-                            ],
-                          ),
+                            ),
+                            IconButton(
+                                icon: Icon(Icons.send),
+                                onPressed: onSendMessage),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              )
-            ],
-          )),
-    );
+              ),
+            )
+          ],
+        ));
   }
 
   Widget messages(Size size, Map<String, dynamic> map, BuildContext context) {
@@ -274,38 +249,33 @@ class _ChatScreenState extends State<ChatScreen> {
                 alignment: map['sendby'] == auth.currentUser.displayName
                     ? Alignment.centerRight
                     : Alignment.centerLeft,
-                child: InkWell(
-                  onLongPress: () {
-                    deleteChat(map);
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                    margin: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      color: Colors.blue,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          map['message'],
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                  margin: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    color: Colors.blue,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        map['message'],
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
                         ),
-                        SizedBox(
-                          width: size.width / 6,
-                          height: 3,
-                        ),
-                        Text(
-                          "${(map['time'] as Timestamp).toDate().hour}:${(map['time'] as Timestamp).toDate().minute}",
-                          style: TextStyle(fontSize: 7),
-                        )
-                      ],
-                    ),
+                      ),
+                      SizedBox(
+                        width: size.width / 6,
+                        height: 3,
+                      ),
+                      Text(
+                        "${(map['time'] as Timestamp).toDate().hour}:${(map['time'] as Timestamp).toDate().minute}",
+                        style: TextStyle(fontSize: 7),
+                      )
+                    ],
                   ),
                 ),
               )
@@ -354,15 +324,6 @@ class _ChatScreenState extends State<ChatScreen> {
       batch.delete(doc.reference);
     }
     await batch.commit();
-  }
-
-  void deleteChat(map) async {
-    await firebase
-        .collection("chatroom")
-        .doc(widget.chatRoomId)
-        .collection("chats")
-        .doc(map['uid'])
-        .delete();
   }
 }
 
