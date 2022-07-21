@@ -226,9 +226,6 @@ class _LoginPageState extends State<LoginPage> {
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10))),
                             onPressed: () {
-                              setState(() {
-                                isLoading = true;
-                              });
                               userLogin();
                             },
                             child: Text(
@@ -282,6 +279,9 @@ class _LoginPageState extends State<LoginPage> {
 
   void userLogin() async {
     try {
+      setState(() {
+        isLoading = true;
+      });
       UserCredential userCredential = await auth.signInWithEmailAndPassword(
           email: emailController.text, password: passwordController.text);
       await storage.write(key: "uid", value: userCredential.user.uid);

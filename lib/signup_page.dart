@@ -373,7 +373,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           "uid": auth.currentUser.uid,
         });
       }
-      storage.write(key: "DOC", value: "0");
       showSnackBar(context, "Register successfully! Please login....");
       Navigator.push(
           context, MaterialPageRoute(builder: (context) => LoginPage()));
