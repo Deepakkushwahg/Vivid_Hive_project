@@ -2,12 +2,14 @@
 //@dart=2.9
 import 'dart:io';
 
+import 'package:chat_application/view_photo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-// import 'package:image_picker/image_picker.dart';
-// import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
 class ChatScreen extends StatefulWidget {
   var userInfo;
@@ -28,69 +30,81 @@ class _ChatScreenState extends State<ChatScreen> {
   final firebase = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
   File imageFile;
-  var moreItems = ["DeleteAll"];
+  var moreItems = ["DeleteAll Chats"];
+  String isMe;
 
-  // Future<void> getImage() async {
-  //   ImagePicker _picker = ImagePicker();
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      isMe = auth.currentUser.uid.toString();
+    });
+  }
 
-  //   await _picker.pickImage(source: ImageSource.gallery).then((xFile) {
-  //     if (xFile != null) {
-  //       imageFile = File(xFile.path);
-  //       uploadImage();
-  //     }
-  //   });
-  // }
+  Future<void> getImage() async {
+    ImagePicker _picker = ImagePicker();
 
-  // Future<void> uploadImage() async {
-  //   String fileName = Uuid().v1();
-  //   int status = 1;
+    await _picker.pickImage(source: ImageSource.gallery).then((xFile) {
+      if (xFile != null) {
+        imageFile = File(xFile.path);
+        uploadImage();
+      }
+    });
+  }
 
-  //   await firebase
-  //       .collection('chatroom')
-  //       .doc(widget.chatRoomId)
-  //       .collection('chats')
-  //       .doc(fileName)
-  //       .set({
-  //     "sendby": auth.currentUser.displayName,
-  //     "message": "",
-  //     "type": "img",
-  //     "time": FieldValue.serverTimestamp(),
-  //   });
+  Future<void> uploadImage() async {
+    String fileName = Uuid().v1();
+    int status = 1;
 
-  //   var ref =
-  //       FirebaseStorage.instance.ref().child('images').child("$fileName.jpg");
+    await firebase
+        .collection('chatroom')
+        .doc(widget.chatRoomId)
+        .collection('chats')
+        .doc(fileName)
+        .set({
+      "sendby": isMe,
+      "message": "",
+      "type": "img",
+      "docId": fileName,
+      "time": FieldValue.serverTimestamp(),
+    });
 
-  //   var uploadTask = await ref.putFile(imageFile).catchError((error) async {
-  //     await firebase
-  //         .collection('chatroom')
-  //         .doc(widget.chatRoomId)
-  //         .collection('chats')
-  //         .doc(fileName)
-  //         .delete();
-  //     status = 0;
-  //   });
+    var ref =
+        FirebaseStorage.instance.ref().child('images').child("$fileName.jpg");
 
-  //   if (status == 1) {
-  //     String imageUrl = await uploadTask.ref.getDownloadURL();
+    var uploadTask = await ref.putFile(imageFile).catchError((error) async {
+      await firebase
+          .collection('chatroom')
+          .doc(widget.chatRoomId)
+          .collection('chats')
+          .doc(fileName)
+          .delete();
+      status = 0;
+    });
 
-  //     await firebase
-  //         .collection('chatroom')
-  //         .doc(widget.chatRoomId)
-  //         .collection('chats')
-  //         .doc(fileName)
-  //         .update({"message": imageUrl});
+    if (status == 1) {
+      String imageUrl = await uploadTask.ref.getDownloadURL();
 
-  //     print(imageUrl);
-  //   }
-  // }
+      await firebase
+          .collection('chatroom')
+          .doc(widget.chatRoomId)
+          .collection('chats')
+          .doc(fileName)
+          .update({"message": imageUrl});
+
+      print(imageUrl);
+    }
+  }
 
   void onSendMessage() async {
+    String docId = Uuid().v1();
     if (_message.text.isNotEmpty) {
       Map<String, dynamic> messages = {
-        "sendby": auth.currentUser.displayName,
+        "sendby": isMe,
         "message": _message.text,
         "type": "text",
         "time": FieldValue.serverTimestamp(),
+        "docId": docId
       };
 
       _message.clear();
@@ -98,7 +112,8 @@ class _ChatScreenState extends State<ChatScreen> {
           .collection('chatroom')
           .doc(widget.chatRoomId)
           .collection('chats')
-          .add(messages);
+          .doc(docId)
+          .set(messages);
     } else {
       print("Enter Some Text");
     }
@@ -119,6 +134,12 @@ class _ChatScreenState extends State<ChatScreen> {
         appBar: AppBar(
           backgroundColor: Color.fromARGB(255, 52, 11, 0),
           title: ListTile(
+            leading: CircleAvatar(
+              // ignore: sort_child_properties_last
+              backgroundImage: (userInfo['imageFile'] == " ")
+                  ? AssetImage(userInfo['img'])
+                  : NetworkImage(userInfo['imageFile']),
+            ),
             title: Text(
               userInfo['Name'],
               style: TextStyle(color: Colors.white, fontSize: 18),
@@ -136,7 +157,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 onSelected: (value) {
                   setState(() {
-                    if (value == "DeleteAll") {
+                    if (value == "DeleteAll Chats") {
                       deleteAllChats();
                     }
                   });
@@ -177,6 +198,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               AsyncSnapshot<QuerySnapshot> snapshot) {
                             if (snapshot.data != null) {
                               return ListView.builder(
+                                shrinkWrap: true,
                                 itemCount: snapshot.data.docs.length,
                                 itemBuilder: (context, index) {
                                   Map<String, dynamic> map =
@@ -196,11 +218,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // IconButton(
-                            //     onPressed: () {
-                            //       getImage();
-                            //     },
-                            //     icon: Icon(Icons.photo)),
+                            IconButton(
+                                onPressed: () {
+                                  getImage();
+                                },
+                                icon: Icon(Icons.photo)),
                             Container(
                               height: size.height / 17,
                               width: size.width / 1.5,
@@ -241,76 +263,105 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget messages(Size size, Map<String, dynamic> map, BuildContext context) {
-    return /*map['type'] == "text"
-        ?*/
-        ((map['time'] as Timestamp) != null)
+    return map['type'] == "text"
+        ? ((map['time'] as Timestamp) != null)
             ? Container(
                 width: size.width,
-                alignment: map['sendby'] == auth.currentUser.displayName
+                alignment: map['sendby'] == isMe
                     ? Alignment.centerRight
                     : Alignment.centerLeft,
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                  margin: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15),
-                    color: Colors.blue,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        map['message'],
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
+                child: InkWell(
+                  onLongPress: () {
+                    showDeleteDialog(context, map);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                    margin: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      color: Colors.blue,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          map['message'],
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      SizedBox(
-                        width: size.width / 6,
-                        height: 3,
-                      ),
-                      Text(
-                        "${(map['time'] as Timestamp).toDate().hour}:${(map['time'] as Timestamp).toDate().minute}",
-                        style: TextStyle(fontSize: 7),
-                      )
-                    ],
+                        SizedBox(
+                          width: size.width / 6,
+                          height: 3,
+                        ),
+                        Text(
+                          "${(map['time'] as Timestamp).toDate().hour}:${(map['time'] as Timestamp).toDate().minute},  ${(map['time'] as Timestamp).toDate().day}-${(map['time'] as Timestamp).toDate().month}-${(map['time'] as Timestamp).toDate().year}",
+                          style: TextStyle(fontSize: 7),
+                        )
+                      ],
+                    ),
                   ),
                 ),
               )
             : Center(
                 child: CircularProgressIndicator(),
+              )
+        : ((map['time'] as Timestamp) != null)
+            ? Container(
+                height: size.height / 2.5,
+                width: size.width,
+                padding: EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+                alignment: map['sendby'] == isMe
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: InkWell(
+                    onLongPress: () {
+                      showDeleteDialog(context, map);
+                    },
+                    onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ViewPhoto(
+                              imageUrl: map['message'],
+                            ),
+                          ),
+                        ),
+                    child: Container(
+                      height: size.height / 2.5,
+                      width: size.width / 2,
+                      color: Colors.blue,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            height: size.height / 2.7,
+                            width: size.width / 2.1,
+                            decoration: BoxDecoration(border: Border.all()),
+                            alignment:
+                                map['message'] != "" ? null : Alignment.center,
+                            child: map['message'] != ""
+                                ? Image.network(
+                                    map['message'],
+                                    fit: BoxFit.fill,
+                                  )
+                                : CircularProgressIndicator(),
+                          ),
+                          SizedBox(
+                            height: 3,
+                          ),
+                          Text(
+                            "${(map['time'] as Timestamp).toDate().hour}:${(map['time'] as Timestamp).toDate().minute},  ${(map['time'] as Timestamp).toDate().day}-${(map['time'] as Timestamp).toDate().month}-${(map['time'] as Timestamp).toDate().year}",
+                            style: TextStyle(fontSize: 7),
+                          )
+                        ],
+                      ),
+                    )),
+              )
+            : Center(
+                child: CircularProgressIndicator(),
               );
-    // : Container(
-    //     height: size.height / 2.5,
-    //     width: size.width,
-    //     padding: EdgeInsets.symmetric(vertical: 5, horizontal: 5),
-    //     alignment: map['sendby'] == auth.currentUser.displayName
-    //         ? Alignment.centerRight
-    //         : Alignment.centerLeft,
-    //     child: InkWell(
-    //       onTap: () => Navigator.of(context).push(
-    //         MaterialPageRoute(
-    //           builder: (_) => ShowImage(
-    //             imageUrl: map['message'],
-    //           ),
-    //         ),
-    //       ),
-    //       child: Container(
-    //         height: size.height / 2.5,
-    //         width: size.width / 2,
-    //         decoration: BoxDecoration(border: Border.all()),
-    //         alignment: map['message'] != "" ? null : Alignment.center,
-    //         child: map['message'] != ""
-    //             ? Image.network(
-    //                 map['message'],
-    //                 fit: BoxFit.cover,
-    //               )
-    //             : CircularProgressIndicator(),
-    //       ),
-    //     ),
-    //   );
   }
 
   void deleteAllChats() async {
@@ -321,28 +372,56 @@ class _ChatScreenState extends State<ChatScreen> {
         .collection('chats');
     var snapshots = await _collection.get();
     for (var doc in snapshots.docs) {
+      if (doc['type'] == "img") {
+        FirebaseStorage.instance
+            .ref()
+            .child('images')
+            .child("${doc['docId']}.jpg")
+            .delete();
+      }
       batch.delete(doc.reference);
     }
     await batch.commit();
   }
+
+  void showDeleteDialog(BuildContext context, Map<String, dynamic> map) async {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(
+              "Delete Message?",
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Color.fromARGB(255, 52, 11, 0),
+            content: Text(
+              "Are you sure? you want to delete this message",
+              style: TextStyle(color: Colors.white),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    if (map['type'] == "img") {
+                      FirebaseStorage.instance
+                          .ref()
+                          .child('images')
+                          .child("${map['docId']}.jpg")
+                          .delete();
+                    }
+                    firebase
+                        .collection('chatroom')
+                        .doc(widget.chatRoomId)
+                        .collection('chats')
+                        .doc(map['docId'])
+                        .delete();
+                  },
+                  child: Text(
+                    "Delete",
+                    style: TextStyle(fontSize: 20),
+                  ))
+            ],
+          );
+        });
+  }
 }
-
-// class ShowImage extends StatelessWidget {
-//   final String imageUrl;
-
-//   const ShowImage({this.imageUrl, Key key}) : super(key: key);
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final Size size = MediaQuery.of(context).size;
-
-//     return Scaffold(
-//       body: Container(
-//         height: size.height,
-//         width: size.width,
-//         color: Colors.black,
-//         child: Image.network(imageUrl),
-//       ),
-//     );
-//   }
-// }
