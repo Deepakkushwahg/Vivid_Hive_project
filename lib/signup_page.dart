@@ -1,5 +1,7 @@
 // ignore_for_file: prefer_const_constructors, prefer_typing_uninitialized_variables, non_constant_identifier_names, use_build_context_synchronously, avoid_print, unnecessary_new
 //@dart=2.9
+import 'dart:ffi';
+
 import 'package:chat_application/login_page.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,6 +18,8 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   bool isVisible = true;
+  var gender = "Male";
+  var genderCatagories = ["Male", "Female", "Other"];
   final storage = new FlutterSecureStorage();
   var firebase = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
@@ -153,6 +157,46 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                         ),
                       ),
+                    ),
+                    SizedBox(
+                      height: 15,
+                    ),
+                    Text(
+                      "Gender",
+                      style: TextStyle(
+                          color: Color.fromARGB(255, 41, 2, 62),
+                          fontSize: 20,
+                          fontFamily: 'Roboto-Bold'),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: Color.fromARGB(255, 41, 2, 62), width: 2)),
+                      child: Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: DropdownButton(
+                            items: genderCatagories.map((String catagory) {
+                              return DropdownMenuItem(
+                                // ignore: sort_child_properties_last
+                                child: Text(
+                                  catagory,
+                                  style: TextStyle(
+                                      fontSize: 20,
+                                      color: (gender == catagory)
+                                          ? Color.fromARGB(255, 41, 2, 62)
+                                          : Colors.black),
+                                ),
+                                value: catagory,
+                              );
+                            }).toList(),
+                            onChanged: (String value) {
+                              setState(() {
+                                gender = value;
+                              });
+                            },
+                            value: gender,
+                          )),
                     ),
                     SizedBox(
                       height: 15,
@@ -361,6 +405,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   void RegisterAccount() async {
     try {
+      var img;
+      setState(() {
+        if (gender == 'Male') {
+          img = "lib/images/men.png";
+        } else if (gender == 'Female') {
+          img = "lib/images/women.png";
+        } else {
+          img = "lib/images/other.png";
+        }
+      });
       UserCredential userCredential = await auth.createUserWithEmailAndPassword(
           email: emailController.text, password: passwordController.text);
       print(userCredential);
@@ -371,6 +425,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
           "Email": emailController.text,
           "status": " ",
           "uid": auth.currentUser.uid,
+          "Gender": gender,
+          "img": img,
+          "imageFile": " "
         });
       }
       showSnackBar(context, "Register successfully! Please login....");
@@ -397,6 +454,6 @@ void showSnackBar(BuildContext context, String message) {
       style: TextStyle(
           fontSize: 20, fontFamily: "Roboto-Bold", color: Colors.white),
     ),
-    duration: Duration(seconds: 5),
+    duration: Duration(seconds: 3),
   ));
 }

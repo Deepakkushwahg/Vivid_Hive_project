@@ -1,33 +1,36 @@
-// ignore_for_file: prefer_const_constructors, duplicate_ignore, implementation_imports, avoid_print, prefer_typing_uninitialized_variables, no_logic_in_create_state, prefer_const_constructors_in_immutables, use_build_context_synchronously, unnecessary_new, non_constant_identifier_names, override_on_non_overriding_member, must_be_immutable, import_of_legacy_library_into_null_safe
+// ignore_for_file: must_be_immutable, use_key_in_widget_constructors, no_leading_underscores_for_local_identifiers, prefer_const_constructors, avoid_print, prefer_typing_uninitialized_variables, no_logic_in_create_state, sized_box_for_whitespace, unnecessary_new, non_constant_identifier_names, use_build_context_synchronously
 //@dart=2.9
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:chat_application/chatting_page.dart';
 import 'package:chat_application/search_users.dart';
 import 'package:chat_application/signup_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'package:chat_application/view_photo.dart';
 import 'login_page.dart';
 
 class HomeScreen extends StatefulWidget {
-  HomeScreen({
-    Key key,
-  }) : super(key: key);
+  const HomeScreen({Key key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final auth = FirebaseAuth.instance;
-  final firebase = FirebaseFirestore.instance;
   final storage = new FlutterSecureStorage();
+  final firebase = FirebaseFirestore.instance;
+  final auth = FirebaseAuth.instance;
   Map<String, dynamic> userInfo;
   String roomId;
   List usersList = [];
+  final ImagePicker picker = ImagePicker();
+  var imageUrl;
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -37,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
   }
 
-  @override
   void getUserData() async {
     await firebase
         .collection("users")
@@ -46,8 +48,111 @@ class _HomeScreenState extends State<HomeScreen> {
         .then((value) {
       setState(() {
         userInfo = value.data();
+        imageUrl = userInfo['imageFile'];
+        isLoading = false;
       });
     });
+  }
+
+  Future<void> getProfileImage(ImageSource source) async {
+    setState(() {
+      isLoading = true;
+    });
+    await picker.pickImage(source: source).then((xFile) {
+      if (xFile != null) {
+        final imageFile = File(xFile.path);
+        uploadProfileImage(imageFile);
+      } else {
+        showSnackBar(context, "image not picked");
+      }
+    });
+  }
+
+  Future<void> uploadProfileImage(File imageFile) async {
+    String fileName = auth.currentUser.uid.toString();
+    int status = 1;
+
+    var ref = FirebaseStorage.instance
+        .ref()
+        .child('profileImages')
+        .child("$fileName.jpg");
+
+    var uploadTask = await ref.putFile(imageFile).catchError((error) async {
+      status = 0;
+      showSnackBar(context, "Retry");
+    });
+
+    if (status == 1) {
+      String url = await uploadTask.ref.getDownloadURL();
+      await firebase
+          .collection('users')
+          .doc(auth.currentUser.uid)
+          .update({"imageFile": url});
+
+      print(url);
+      getUserData();
+    }
+  }
+
+  void bottomsheet(BuildContext context) {
+    showModalBottomSheet(
+        context: context,
+        builder: (BuildContext context) {
+          return SizedBox(
+            height: 120,
+            width: MediaQuery.of(context).size.width,
+            child: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                // ignore: prefer_const_literals_to_create_immutables
+                children: [
+                  Text(
+                    "Choose Profile photo",
+                    style: TextStyle(fontSize: 20),
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton.icon(
+                          onPressed: () {
+                            getProfileImage(ImageSource.camera);
+                          },
+                          icon: Icon(Icons.camera_alt),
+                          label: Text("Camera")),
+                      TextButton.icon(
+                          onPressed: () {
+                            getProfileImage(ImageSource.gallery);
+                          },
+                          icon: Icon(Icons.photo),
+                          label: Text("Gallery")),
+                      TextButton.icon(
+                          onPressed: () async {
+                            setState(() {
+                              isLoading = true;
+                            });
+                            await firebase
+                                .collection("users")
+                                .doc(auth.currentUser.uid)
+                                .update({"imageFile": " "});
+                            getUserData();
+                            await FirebaseStorage.instance
+                                .ref()
+                                .child('profileImages')
+                                .child("${auth.currentUser.uid.toString()}.jpg")
+                                .delete();
+                          },
+                          icon: Icon(Icons.person_sharp),
+                          label: Text("Default image"))
+                    ],
+                  )
+                ],
+              ),
+            ),
+          );
+        });
   }
 
   String chatRoomId(String user1, String user2) {
@@ -59,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void setStatus(String status) async {
+  Future<void> setStatus(String status) async {
     await firebase.collection('users').doc(auth.currentUser.uid).update({
       "status": status,
     });
@@ -68,13 +173,22 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     if (userInfo == null || auth.currentUser.uid == null) {
-      return Scaffold(
-          body: Center(
-        child: CircularProgressIndicator(color: Colors.blueAccent),
-      ));
+      return WillPopScope(
+        onWillPop: () async {
+          print("change status and close app");
+          await setStatus(" ");
+          exit(0);
+        },
+        child: Scaffold(
+            body: Center(
+          child: CircularProgressIndicator(color: Colors.blueAccent),
+        )),
+      );
     }
     return WillPopScope(
       onWillPop: () async {
+        print("change status and close app");
+        await setStatus(" ");
         exit(0);
       },
       child: Scaffold(
@@ -106,86 +220,140 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           drawer: Drawer(
-            child: ListView(
-              children: [
-                Container(
-                  color: Color.fromARGB(255, 52, 11, 0),
-                  padding: EdgeInsets.fromLTRB(5, 10, 5, 10),
-                  margin: EdgeInsets.all(10),
-                  // ignore: prefer_const_literals_to_create_immutables
-                  child: Column(children: [
-                    Text(
-                      userInfo['Name'],
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    Text(userInfo['Phone'],
-                        style: TextStyle(color: Colors.white)),
-                    Text(userInfo['Email'],
-                        style: TextStyle(color: Colors.white))
-                  ]),
-                ),
-                ListTile(
-                  leading: Icon(Icons.home),
-                  title: Text("Home"),
-                  trailing: Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.logout_outlined),
-                  title: Text("Log out"),
-                  trailing: Icon(Icons.arrow_forward_ios),
-                  onTap: () async {
-                    try {
-                      setStatus(" ");
-                      await auth.signOut();
-                      await storage.delete(key: "uid");
-                      showSnackBar(context, "Logout successfully");
-                      // ignore: use_build_context_synchronously
-                      Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => LoginPage(),
+              child: Stack(
+            children: [
+              ListView(
+                children: [
+                  Container(
+                    color: Color.fromARGB(255, 52, 11, 0),
+                    padding: EdgeInsets.fromLTRB(5, 10, 5, 10),
+                    margin: EdgeInsets.all(10),
+                    // ignore: prefer_const_literals_to_create_immutables
+                    child: Column(children: [
+                      Stack(
+                        children: <Widget>[
+                          InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => ViewPhoto(
+                                            img: userInfo['img'],
+                                            imageUrl: userInfo['imageFile'],
+                                          )));
+                            },
+                            child: CircleAvatar(
+                              backgroundImage: (imageUrl == " ")
+                                  ? AssetImage(userInfo['img'])
+                                  : NetworkImage(imageUrl),
+                              radius: 80.0,
+                            ),
                           ),
-                          (route) => false);
-                    } catch (e) {
-                      print("singout failed due to ${e.toString()}");
-                      showSnackBar(
-                          context, "singout failed due to ${e.toString()}");
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.delete,
-                    color: Colors.red,
+                          Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.add_a_photo_sharp,
+                                  size: 28,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () {
+                                  bottomsheet(context);
+                                },
+                              ))
+                        ],
+                      ),
+                      SizedBox(
+                        height: 10,
+                      ),
+                      Text(
+                        userInfo['Name'],
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      Text(userInfo['Phone'],
+                          style: TextStyle(color: Colors.white)),
+                      Text(userInfo['Email'],
+                          style: TextStyle(color: Colors.white))
+                    ]),
                   ),
-                  title: Text(
-                    "Delete Account",
-                    style: TextStyle(color: Colors.red),
+                  ListTile(
+                    leading: Icon(Icons.home),
+                    title: Text("Home"),
+                    trailing: Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                    },
                   ),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    showDialogScreen(context);
-                  },
-                ),
-              ],
-            ),
-          ),
+                  ListTile(
+                    leading: Icon(Icons.logout_outlined),
+                    title: Text("Log out"),
+                    trailing: Icon(Icons.arrow_forward_ios),
+                    onTap: () async {
+                      try {
+                        setStatus(" ");
+                        await auth.signOut();
+                        await storage.delete(key: "uid");
+                        showSnackBar(context, "Logout successfully");
+                        Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LoginPage(),
+                            ),
+                            (route) => false);
+                      } catch (e) {
+                        print("singout failed due to ${e.toString()}");
+                        showSnackBar(
+                            context, "singout failed due to ${e.toString()}");
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                    ),
+                    title: Text(
+                      "Delete Account",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      showDialogScreen(context);
+                    },
+                  ),
+                ],
+              ),
+              Positioned(
+                  child: (isLoading)
+                      ? Center(
+                          child: CircularProgressIndicator(),
+                        )
+                      : Center())
+            ],
+          )),
           body: (usersList != null)
               ? ListView.builder(
                   itemCount: usersList.length,
                   // ignore: missing_return
                   itemBuilder: (context, i) {
                     return ListTile(
-                      leading: CircleAvatar(
-                        // ignore: sort_child_properties_last
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.white,
+                      leading: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ViewPhoto(
+                                        img: usersList[i]['img'],
+                                        imageUrl: usersList[i]['imageFile'],
+                                      )));
+                        },
+                        child: CircleAvatar(
+                          // ignore: sort_child_properties_last
+                          backgroundImage: (usersList[i]['imageFile'] == " ")
+                              ? AssetImage(usersList[i]['img'])
+                              : NetworkImage(usersList[i]['imageFile']),
                         ),
-                        backgroundColor: Color.fromARGB(255, 52, 11, 0),
                       ),
                       title: Text(
                         usersList[i]['Name'],

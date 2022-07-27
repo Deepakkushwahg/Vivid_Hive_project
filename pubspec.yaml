@@ -49,6 +49,8 @@ dependencies:
   flutter_emoji: ^2.4.0
   messaging_service: ^1.0.2
   url_launcher: ^6.1.4
+  cached_network_image: ^3.2.1
+  
   
   
   
@@ -80,6 +82,9 @@ flutter:
   assets:
     - lib/images/logo.png
     - lib/images/vivid_hive.jpeg
+    - lib/images/men.png
+    - lib/images/women.png
+    - lib/images/other.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

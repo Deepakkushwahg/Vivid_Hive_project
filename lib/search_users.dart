@@ -1,6 +1,8 @@
 // ignore_for_file: no_logic_in_create_state, implementation_imports, prefer_typing_uninitialized_variables, prefer_const_constructors, no_leading_underscores_for_local_identifiers
 //@dart=2.9
+
 import 'package:chat_application/chatting_page.dart';
+import 'package:chat_application/view_photo.dart';
 import 'package:flutter/material.dart';
 
 class SearchUsers extends StatefulWidget {
@@ -75,13 +77,22 @@ class _SearchUsersState extends State<SearchUsers> {
                         ? usersList[i]
                         : usersFiltered[i];
                     return ListTile(
-                      leading: CircleAvatar(
-                        // ignore: sort_child_properties_last
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.white,
+                      leading: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ViewPhoto(
+                                        img: x['img'],
+                                        imageUrl: x['imageFile'],
+                                      )));
+                        },
+                        child: CircleAvatar(
+                          // ignore: sort_child_properties_last
+                          backgroundImage: (x['imageFile'] == " ")
+                              ? AssetImage(x['img'])
+                              : NetworkImage(x['imageFile']),
                         ),
-                        backgroundColor: Color.fromARGB(255, 52, 11, 0),
                       ),
                       title: Text(
                         x['Name'],
