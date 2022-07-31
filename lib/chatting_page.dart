@@ -32,6 +32,13 @@ class _ChatScreenState extends State<ChatScreen> {
   File imageFile;
   var moreItems = ["DeleteAll Chats"];
   String isMe;
+  ScrollController scrollController = ScrollController();
+
+  @override
+  void reassemble() {
+    auth.currentUser.reload();
+    super.reassemble();
+  }
 
   @override
   void initState() {
@@ -97,6 +104,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void onSendMessage() async {
+    scrollController.animateTo(scrollController.position.maxScrollExtent,
+        duration: Duration(milliseconds: 300), curve: Curves.easeOut);
     String docId = Uuid().v1();
     if (_message.text.isNotEmpty) {
       Map<String, dynamic> messages = {
@@ -133,6 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Color.fromARGB(255, 52, 11, 0),
+          titleSpacing: 0.0,
           title: ListTile(
             leading: CircleAvatar(
               // ignore: sort_child_properties_last
@@ -179,83 +189,82 @@ class _ChatScreenState extends State<ChatScreen> {
               image: AssetImage("lib/images/vivid_hive.jpeg"),
             )),
             Positioned(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 5, right: 5, top: 10),
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Container(
-                        height: size.height / 1.25,
-                        width: size.width,
-                        child: StreamBuilder<QuerySnapshot>(
-                          stream: firebase
-                              .collection('chatroom')
-                              .doc(widget.chatRoomId)
-                              .collection('chats')
-                              .orderBy("time", descending: false)
-                              .snapshots(),
-                          builder: (BuildContext context,
-                              AsyncSnapshot<QuerySnapshot> snapshot) {
-                            if (snapshot.data != null) {
-                              return ListView.builder(
-                                shrinkWrap: true,
-                                itemCount: snapshot.data.docs.length,
-                                itemBuilder: (context, index) {
-                                  Map<String, dynamic> map =
-                                      snapshot.data.docs[index].data()
-                                          as Map<String, dynamic>;
-                                  return messages(size, map, context);
-                                },
-                              );
-                            } else {
-                              return Container();
-                            }
-                          },
-                        ),
-                      ),
-                      Container(
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                                onPressed: () {
-                                  getImage();
-                                },
-                                icon: Icon(Icons.photo)),
-                            Container(
-                              height: size.height / 17,
-                              width: size.width / 1.5,
-                              decoration: BoxDecoration(
-                                  color: Colors.black12,
-                                  border: Border.all(
-                                      color: Color.fromARGB(255, 52, 11, 0),
-                                      width: 2),
-                                  borderRadius: BorderRadius.circular(20)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(7.0),
-                                child: IntrinsicHeight(
-                                  child: TextField(
-                                    maxLines: 2,
-                                    cursorColor: Color.fromARGB(255, 52, 11, 0),
-                                    cursorHeight: 22,
-                                    controller: _message,
-                                    decoration: InputDecoration.collapsed(
-                                        hintText: "Send Message",
-                                        border: InputBorder.none),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                                icon: Icon(Icons.send),
-                                onPressed: onSendMessage),
-                          ],
-                        ),
-                      ),
-                    ],
+              child: Column(
+                children: [
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: firebase
+                          .collection('chatroom')
+                          .doc(widget.chatRoomId)
+                          .collection('chats')
+                          .orderBy("time", descending: false)
+                          .snapshots(),
+                      builder: (BuildContext context,
+                          AsyncSnapshot<QuerySnapshot> snapshot) {
+                        if (snapshot.data != null) {
+                          return ListView.builder(
+                            controller: scrollController,
+                            shrinkWrap: true,
+                            itemCount: snapshot.data.docs.length + 1,
+                            itemBuilder: (context, index) {
+                              if (index == snapshot.data.docs.length) {
+                                return Container(
+                                  height: 60,
+                                );
+                              }
+                              Map<String, dynamic> map =
+                                  snapshot.data.docs[index].data()
+                                      as Map<String, dynamic>;
+                              return messages(size, map, context);
+                            },
+                          );
+                        } else {
+                          return Container();
+                        }
+                      },
+                    ),
                   ),
-                ),
+                  Container(
+                    alignment: Alignment.bottomCenter,
+                    padding: EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        IconButton(
+                            onPressed: () {
+                              getImage();
+                            },
+                            icon: Icon(Icons.photo)),
+                        Flexible(
+                          child: TextFormField(
+                            controller: _message,
+                            minLines: 1,
+                            maxLines: 5,
+                            decoration: InputDecoration(
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(50),
+                                borderSide: BorderSide(
+                                    color: Color.fromARGB(255, 52, 11, 0),
+                                    width: 2),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(50),
+                                borderSide:
+                                    BorderSide(color: Colors.grey, width: 0.0),
+                              ),
+                              hintText: 'Type a message',
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                            icon: Icon(
+                              Icons.send,
+                              size: 32,
+                            ),
+                            onPressed: onSendMessage),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             )
           ],
@@ -274,33 +283,39 @@ class _ChatScreenState extends State<ChatScreen> {
                   onLongPress: () {
                     showDeleteDialog(context, map);
                   },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                    margin: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      color: Colors.blue,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          map['message'],
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
+                  child: Padding(
+                    padding: (map['sendby'] == isMe)
+                        ? const EdgeInsets.only(left: 50)
+                        : EdgeInsets.only(right: 50),
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                      margin: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        color: Colors.blue,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            map['message'],
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        SizedBox(
-                          width: size.width / 6,
-                          height: 3,
-                        ),
-                        Text(
-                          "${(map['time'] as Timestamp).toDate().hour}:${(map['time'] as Timestamp).toDate().minute},  ${(map['time'] as Timestamp).toDate().day}-${(map['time'] as Timestamp).toDate().month}-${(map['time'] as Timestamp).toDate().year}",
-                          style: TextStyle(fontSize: 7),
-                        )
-                      ],
+                          SizedBox(
+                            width: size.width / 6,
+                            height: 3,
+                          ),
+                          Text(
+                            "${(map['time'] as Timestamp).toDate().hour}:${(map['time'] as Timestamp).toDate().minute},  ${(map['time'] as Timestamp).toDate().day}-${(map['time'] as Timestamp).toDate().month}-${(map['time'] as Timestamp).toDate().year}",
+                            style: TextStyle(fontSize: 7),
+                          )
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -158,9 +158,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String chatRoomId(String user1, String user2) {
     if (user1[0].toLowerCase().codeUnits[0] >
         user2.toLowerCase().codeUnits[0]) {
-      return "$user1$user2";
+      return "$user1-$user2";
     } else {
-      return "$user2$user1";
+      return "$user2-$user1";
     }
   }
 
@@ -337,41 +337,50 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: usersList.length,
                   // ignore: missing_return
                   itemBuilder: (context, i) {
-                    return ListTile(
-                      leading: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => ViewPhoto(
-                                        img: usersList[i]['img'],
-                                        imageUrl: usersList[i]['imageFile'],
-                                      )));
-                        },
-                        child: CircleAvatar(
-                          // ignore: sort_child_properties_last
-                          backgroundImage: (usersList[i]['imageFile'] == " ")
-                              ? AssetImage(usersList[i]['img'])
-                              : NetworkImage(usersList[i]['imageFile']),
+                    return Column(
+                      children: [
+                        Divider(
+                          height: 8.0,
                         ),
-                      ),
-                      title: Text(
-                        usersList[i]['Name'],
-                        style: TextStyle(color: Colors.black),
-                      ),
-                      onTap: () {
-                        setState(() {
-                          roomId =
-                              chatRoomId(userInfo['uid'], usersList[i]['uid']);
-                        });
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) {
-                          return ChatScreen(
-                            chatRoomId: roomId,
-                            userInfo: usersList[i],
-                          );
-                        }));
-                      },
+                        ListTile(
+                          leading: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => ViewPhoto(
+                                            img: usersList[i]['img'],
+                                            imageUrl: usersList[i]['imageFile'],
+                                          )));
+                            },
+                            child: CircleAvatar(
+                              radius: 28,
+                              // ignore: sort_child_properties_last
+                              backgroundImage:
+                                  (usersList[i]['imageFile'] == " ")
+                                      ? AssetImage(usersList[i]['img'])
+                                      : NetworkImage(usersList[i]['imageFile']),
+                            ),
+                          ),
+                          title: Text(
+                            usersList[i]['Name'],
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              roomId = chatRoomId(
+                                  userInfo['uid'], usersList[i]['uid']);
+                            });
+                            Navigator.push(context,
+                                MaterialPageRoute(builder: (context) {
+                              return ChatScreen(
+                                chatRoomId: roomId,
+                                userInfo: usersList[i],
+                              );
+                            }));
+                          },
+                        )
+                      ],
                     );
                   })
               : Center(child: CircularProgressIndicator())),

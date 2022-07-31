@@ -1,10 +1,10 @@
 // ignore_for_file: prefer_const_constructors, prefer_typing_uninitialized_variables, non_constant_identifier_names, use_build_context_synchronously, avoid_print, unnecessary_new
 //@dart=2.9
-import 'dart:ffi';
 
 import 'package:chat_application/login_page.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:email_auth/email_auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -18,7 +18,9 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   bool isVisible = true;
+  final TextEditingController otpController = TextEditingController();
   var gender = "Male";
+  EmailAuth emailAuth = new EmailAuth(sessionName: "Otp session");
   var genderCatagories = ["Male", "Female", "Other"];
   final storage = new FlutterSecureStorage();
   var firebase = FirebaseFirestore.instance;
@@ -39,6 +41,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
+    otpController.clear();
     super.dispose();
   }
 
@@ -376,7 +380,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 validConfirmPassword = null;
                                 isLoading = true;
                               });
-                              RegisterAccount();
+                              sendOtp();
                             }
                           },
                           child: Text(
@@ -427,7 +431,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           "uid": auth.currentUser.uid,
           "Gender": gender,
           "img": img,
-          "imageFile": " "
+          "imageFile": " ",
         });
       }
       showSnackBar(context, "Register successfully! Please login....");
@@ -442,6 +446,72 @@ class _SignUpScreenState extends State<SignUpScreen> {
       } else if (e.code == 'email-already-in-use') {
         showSnackBar(context, "Account already exists");
       }
+    }
+  }
+
+  void showVerifyAlert(BuildContext context) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("Enter OTP"),
+            content: TextField(
+              maxLength: 6,
+              keyboardType: TextInputType.number,
+              controller: otpController,
+              decoration: InputDecoration(
+                errorStyle: TextStyle(color: Colors.red),
+              ),
+            ),
+            actions: [
+              Center(
+                child: ElevatedButton(
+                    onPressed: () {
+                      if (otpController.text.length == 6) {
+                        verifyOtp();
+                      } else {
+                        showSnackBar(context, "Please enter 6 digit OTP");
+                      }
+                    },
+                    child: Text("Verify OTP")),
+              )
+            ],
+          );
+        });
+  }
+
+  void verifyOtp() {
+    setState(() {
+      isLoading = true;
+    });
+    Navigator.of(context).pop();
+    bool result = emailAuth.validateOtp(
+        recipientMail: emailController.text.trim(),
+        userOtp: otpController.text);
+    otpController.clear();
+    if (result) {
+      showSnackBar(context, "Otp verified");
+      RegisterAccount();
+    } else {
+      showSnackBar(context, "Invalid OTP");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  void sendOtp() async {
+    bool result =
+        await emailAuth.sendOtp(recipientMail: emailController.text.trim());
+    if (result) {
+      showSnackBar(context, "Otp sent");
+      setState(() {
+        isLoading = false;
+      });
+      showVerifyAlert(context);
+    } else {
+      showSnackBar(context, "We could not sent the OTP");
+      sendOtp();
     }
   }
 }
