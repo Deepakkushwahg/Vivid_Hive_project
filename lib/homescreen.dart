@@ -25,12 +25,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final storage = new FlutterSecureStorage();
   final firebase = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
-  Map<String, dynamic> userInfo;
+  Map<String, dynamic> userInfo, lastMessage;
   String roomId;
   List usersList = [];
   final ImagePicker picker = ImagePicker();
   var imageUrl;
   bool isLoading = false;
+  bool isPresent = false;
 
   @override
   void initState() {
@@ -61,9 +62,13 @@ class _HomeScreenState extends State<HomeScreen> {
     await picker.pickImage(source: source).then((xFile) {
       if (xFile != null) {
         final imageFile = File(xFile.path);
+        Navigator.of(context).pop();
         uploadProfileImage(imageFile);
       } else {
-        showSnackBar(context, "image not picked");
+        setState(() {
+          isLoading = false;
+        });
+        Navigator.of(context).pop();
       }
     });
   }
@@ -133,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             setState(() {
                               isLoading = true;
                             });
+                            Navigator.of(context).pop();
                             await firebase
                                 .collection("users")
                                 .doc(auth.currentUser.uid)
@@ -325,6 +331,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               Positioned(
+                  right: 0,
+                  left: 0,
+                  top: 100,
                   child: (isLoading)
                       ? Center(
                           child: CircularProgressIndicator(),
@@ -340,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     return Column(
                       children: [
                         Divider(
-                          height: 8.0,
+                          height: 5.0,
                         ),
                         ListTile(
                           leading: InkWell(
